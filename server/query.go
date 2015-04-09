@@ -5,6 +5,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 )
 
 type Pair struct {
@@ -78,7 +81,8 @@ func query(key string) (*Query, error) {
 		return nil, err
 	}
 	defer res.Body.Close()
-	b, err := ioutil.ReadAll(res.Body)
+	b, err := ioutil.ReadAll(transform.NewReader(res.Body,
+		simplifiedchinese.GBK.NewDecoder()))
 	if err != nil {
 		return nil, err
 	}
