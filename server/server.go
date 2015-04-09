@@ -18,6 +18,7 @@ func init() {
 
 func homeHandler(res http.ResponseWriter, req *http.Request) {
 	log.Println("homeHandler")
+	queryAll()
 	if e := homeTem.Execute(res, nil); e != nil {
 		log.Printf("homeHandler: %s\n", e)
 	}

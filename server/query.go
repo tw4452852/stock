@@ -2,9 +2,13 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"runtime"
 	"strings"
+	"sync"
 
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
@@ -75,8 +79,42 @@ var (
 	}
 )
 
+const url = "http://qt.gtimg.cn/q="
+
+func queryAll() ([]*Query, error) {
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(runtime.NumCPU()))
+
+	qf := func(key string) {
+		if _, e := query(key); e != nil {
+			log.Printf("query %s failed: %s", key, e)
+		} else {
+			log.Printf("query %s done", key)
+		}
+	}
+	pool := make(chan struct{}, runtime.NumCPU())
+	waiter := sync.WaitGroup{}
+	const count = 1000
+	qs := make([]*Query, 0, count)
+	for i := 1; i < count; i++ {
+		key := fmt.Sprintf("sz%06d", i)
+		select {
+		case pool <- struct{}{}:
+			waiter.Add(1)
+			go func(key string) {
+				qf(key)
+				<-pool
+				waiter.Done()
+			}(key)
+		default:
+			qf(key)
+		}
+	}
+	waiter.Wait()
+	return qs, nil
+}
+
 func query(key string) (*Query, error) {
-	res, err := http.Get("http://qt.gtimg.cn/q=" + key)
+	res, err := http.Get(url + key)
 	if err != nil {
 		return nil, err
 	}
